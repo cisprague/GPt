@@ -279,3 +279,53 @@ class KinkTransitions(BaseGaussianTransitions):
             Xmu = tf.matmul(X, self.D, transpose_b=True)  # (T-1)xD
         Xmu = self.a + (self.b + X) * (1. - self.c / (1. + tf.exp(-Xmu)))
         return Xmu  # (T-1)xD or n_samplesx(T-1)xD
+
+
+class AUVTransitions(BaseGaussianTransitions):
+
+    def __init__(self):
+
+        # state dimension
+        dim = 6
+
+        # process noise covariance matrix (eq.3)
+        Q = np.eye(dim) * 0.5
+
+        # inherit
+        super().__init__(dim=dim, Q=Q)
+
+    @params_as_tensors
+    def conditional_mean(self, X, inputs):
+
+        # translational and rotational state
+        x, y, z, rho, phi, theta = [X[:,i] for i in range(self.dim)]
+
+        # translational and rotational control inputs
+        vx, vy, vz, omegax, omegay, omegaz = [inputs[:,i] for i in range(self.dim)]
+        
+        # common subexpression elimination
+        x0 = tf.cos(theta)
+        x1 = tf.cos(phi)
+        x2 = vx*x1
+        x3 = tf.sin(rho)
+        x4 = tf.sin(theta)
+        x5 = x3*x4
+        x6 = tf.sin(phi)
+        x7 = tf.cos(rho)
+        x8 = x0*x7
+        x9 = x4*x7
+        x10 = x0*x3
+        
+        # state rate
+        dXdt = tf.stack([
+            vy*(x10*x6 - x9) + vz*(x5 + x6*x8) + x0*x2,
+            vy*(x5*x6 + x8) + vz*(-x10 + x6*x9) + x2*x4,
+            -vx*x6 + vy*x1*x3 + vz*x1*x7,
+            omegax,
+            omegay,
+            omegaz
+        ])
+
+        # Euler integration
+        dt = 1.0
+        return X + dt*tf.transpose(dXdt)
