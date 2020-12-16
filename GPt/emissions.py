@@ -163,6 +163,37 @@ class SquaringEmissions(GaussianEmissions):
     def variational_expectations(self, Xmu, Xcov, Y):
         raise NotImplementedError
 
+class MBESEmissions(GaussianEmissions):
+
+    def __init__(self):
+
+        # 6-dimensional state and 2-dimensional observation (x,y) of ping
+        super().__init__(latent_dim=6, obs_dim=2)
+
+
+    @params_as_tensors
+    def conditional_mean(self, X):
+
+        # NOTE maybe, consider the landmarks to 
+
+        # translation and rotational latent state
+        x, y, z, rho, phi, theta = [X[:,i] for i in range(self.dim)]
+
+        # common su
+        x0 = cos(phi)
+        x1 = cos(theta)
+        x2 = sin(theta)
+        x3 = cos(rho)
+        x4 = x2*x3
+        x5 = sin(phi)
+        x6 = sin(rho)
+        x7 = x1*x6
+        x8 = x2*x6
+        x9 = x1*x3
+
+        #NOTE TBD
+
+
 
 class VolatilityEmissions(gp.likelihoods.Likelihood):
     """
